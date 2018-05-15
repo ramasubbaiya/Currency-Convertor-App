@@ -9,8 +9,9 @@ import { InputWithButton } from '../components/TextInput';
 import { ClearButton } from '../components/Button';
 import { LastConverted } from '../components/Text';
 import { Header } from '../components/Header';
+import { connectAlert } from '../components/Alert';
 
-import { swapCurrency, changeCurrencyAmount } from '../actions/currencies';
+import { swapCurrency, changeCurrencyAmount, getInitialConversion } from '../actions/currencies';
 
 class Home extends Component {
   static propTypes = {
@@ -23,7 +24,20 @@ class Home extends Component {
     isFetching: PropTypes.bool,
     lastConvertedDate: PropTypes.object,
     primaryColor: PropTypes.string,
+    alertWithType: PropTypes.func,
+    currencyError: PropTypes.string,
   };
+
+  componentWillMount() {
+    console.log('getting initial conversion');
+    this.props.dispatch(getInitialConversion());
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (nextProps.currencyError && nextProps.currencyError !== this.props.currencyError) {
+      this.props.alertWithType('error', 'Error', nextProps.currencyError);
+    }
+  }
 
   handlePressBaseCurrency = () => {
     console.log('press base handlePressBaseCurrency');
@@ -72,9 +86,8 @@ class Home extends Component {
           <InputWithButton
             buttonText={this.props.baseCurrency}
             onPress={this.handlePressBaseCurrency}
-            defaultPrice={this.props.amount}
+            value={this.props.amount.toString()}
             keyboardType="numeric"
-            value={this.props.amount}
             onChangeText={this.handleTextChange}
             textColor={this.props.primaryColor}
           />
@@ -102,8 +115,8 @@ class Home extends Component {
 }
 
 const mapStateToProps = (state) => {
-  const baseCurrency = state.currencies.baseCurrency || '';
-  const quoteCurrency = state.currencies.quoteCurrency || '';
+  const baseCurrency = state.currencies.baseCurrency;
+  const quoteCurrency = state.currencies.quoteCurrency;
   const conversionSelector = state.currencies.conversions[baseCurrency] || {};
   const rates = conversionSelector.rates || {};
 
@@ -111,12 +124,13 @@ const mapStateToProps = (state) => {
     baseCurrency,
     quoteCurrency,
     amount: state.currencies.amount,
-    conversionRate: rates[quoteCurrency],
+    conversionRate: rates[quoteCurrency] || 0,
     isFetching: conversionSelector.isFetching,
     lastConvertedDate: conversionSelector.date ?
       new Date(conversionSelector.date) : new Date(),
     primaryColor: state.theme.primaryColor,
+    currencyError: state.currencies.error,
   };
 };
 
-export default connect(mapStateToProps)(Home);
+export default connect(mapStateToProps)(connectAlert(Home));
